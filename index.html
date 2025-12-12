@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Baseraa - Image Inpainting</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%232db89f' width='100' height='100' rx='20'/><path fill='white' d='M50 25L70 40v35c0 2-2 5-5 5H35c-3 0-5-3-5-5V40z'/><rect fill='white' x='42' y='55' width='16' height='25'/></svg>">
   <style>
     * {
       margin: 0;
@@ -143,6 +145,33 @@
       font-size: 0.95rem;
       color: #666;
     }
+    .token-info {
+      margin-top: 16px;
+      padding: 16px;
+      background: linear-gradient(135deg, #e8f5f2 0%, #d4ede7 100%);
+      border-radius: 10px;
+      border: 2px solid #2db89f;
+      font-size: 0.95rem;
+      color: #1a1a1a;
+      box-shadow: 0 2px 8px rgba(45, 184, 159, 0.15);
+    }
+    .token-info strong {
+      color: #2db89f;
+      font-size: 1.05rem;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .token-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #b8e6dc;
+    }
+    .token-row:last-child {
+      border-bottom: none;
+      font-weight: 600;
+      color: #2db89f;
+    }
   </style>
 </head>
 <body>
@@ -178,6 +207,21 @@
 
       <button type="submit" id="submit-btn">Inpaint</button>
       <div class="status" id="status"></div>
+      <div class="token-info" id="token-info" style="display:none;">
+        <strong>📊 Token Usage</strong>
+        <div class="token-row">
+          <span>Input Tokens:</span>
+          <span id="input-tokens">0</span>
+        </div>
+        <div class="token-row">
+          <span>Output Tokens:</span>
+          <span id="output-tokens">0</span>
+        </div>
+        <div class="token-row">
+          <span>Total Tokens:</span>
+          <span id="total-tokens">0</span>
+        </div>
+      </div>
     </form>
 
     <div class="row">
@@ -258,6 +302,37 @@
         }
 
         const data = await res.json();
+        
+        console.log("Response data:", data); // Debug log
+
+        // Check for errors first, before checking for image
+        if (data.error) {
+          // Show error but still display the original image if available
+          if (data.image_base64) {
+            resultImage.src = "data:image/png;base64," + data.image_base64;
+            resultImage.style.display = "block";
+            resultBox.classList.remove("empty");
+            resultBox.querySelector("span").style.display = "none";
+          }
+          
+          statusEl.textContent = data.error;
+          statusEl.style.color = "#d32f2f";
+          statusEl.style.fontWeight = "600";
+          
+          // Show token usage even with error
+          const tokenInfo = document.getElementById("token-info");
+          const inputTokens = (data.token_usage && data.token_usage.input_tokens) || 0;
+          const outputTokens = (data.token_usage && data.token_usage.output_tokens) || 0;
+          const totalTokens = (data.token_usage && data.token_usage.total_tokens) || 0;
+          
+          document.getElementById("input-tokens").textContent = inputTokens;
+          document.getElementById("output-tokens").textContent = outputTokens;
+          document.getElementById("total-tokens").textContent = totalTokens;
+          tokenInfo.style.display = "block";
+          
+          submitBtn.disabled = false;
+          return; // Exit early
+        }
 
         if (!data.image_base64) {
           throw new Error("No image returned from server");
@@ -268,7 +343,26 @@
         resultImage.style.display = "block";
         resultBox.classList.remove("empty");
         resultBox.querySelector("span").style.display = "none";
+        
         statusEl.textContent = "Done!";
+        statusEl.style.color = "#666";
+        
+        // Always display token usage box (for testing - show even with 0 tokens)
+        const tokenInfo = document.getElementById("token-info");
+        
+        // Show token info with data or defaults
+        const inputTokens = (data.token_usage && data.token_usage.input_tokens) || 0;
+        const outputTokens = (data.token_usage && data.token_usage.output_tokens) || 0;
+        const totalTokens = (data.token_usage && data.token_usage.total_tokens) || 0;
+        
+        document.getElementById("input-tokens").textContent = inputTokens;
+        document.getElementById("output-tokens").textContent = outputTokens;
+        document.getElementById("total-tokens").textContent = totalTokens;
+        
+        // Always show the box after processing
+        tokenInfo.style.display = "block";
+        
+        console.log("Token usage displayed:", {inputTokens, outputTokens, totalTokens}); // Debug log
       } catch (err) {
         console.error(err);
         statusEl.textContent = "Error: " + err.message;

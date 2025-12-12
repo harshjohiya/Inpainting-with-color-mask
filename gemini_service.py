@@ -33,7 +33,7 @@ class GeminiService:
         
         Args:
             image_bytes: Raw image bytes
-            prompt: Text instruction for inpainting (e.g., "remove the chair")
+            prompt: Just the item name to remove (e.g., "sofa", "chair", "curtain")
         
         Returns:
             dict with keys: image_base64, token_usage, and optionally error
@@ -48,8 +48,12 @@ class GeminiService:
             # Load image with PIL
             img = Image.open(io.BytesIO(image_bytes))
             
+            # Construct full prompt from item name
+            full_prompt = f"Remove {prompt} from this image and fill the space naturally to match the surrounding area."
+            print(f"Full prompt: {full_prompt}")
+            
             # Call API directly - no retry, no delay
-            response = self._call_api(prompt, img)
+            response = self._call_api(full_prompt, img)
             
             # Extract token usage
             token_info = self._extract_token_usage(response)

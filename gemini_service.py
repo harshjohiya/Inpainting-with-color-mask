@@ -48,11 +48,8 @@ class GeminiService:
             # Load image with PIL
             img = Image.open(io.BytesIO(image_bytes))
             
-            # Add initial delay before first call (from working test code)
-            time.sleep(1)
-            
-            # Perform API call with retry logic
-            response = self._call_api_with_retry(prompt, img)
+            # Call API directly - no retry, no delay
+            response = self._call_api(prompt, img)
             
             # Extract token usage
             token_info = self._extract_token_usage(response)
@@ -65,54 +62,17 @@ class GeminiService:
         except Exception as e:
             return self._handle_error(e, image_bytes)
     
-    def _call_api_with_retry(self, prompt: str, img: Image.Image):
-        """Call Gemini API with exponential backoff retry logic"""
-        delay = BASE_DELAY
-        response = None
+    def _call_api(self, prompt: str, img: Image.Image):
+        """Call Gemini API once - no retries"""
+        print("Calling Gemini API...")
         
-        for attempt in range(1, MAX_RETRIES + 1):
-            try:
-                print(f"Attempting API call {attempt}/{MAX_RETRIES}...")
-                
-                # ACTUAL API CALL - using NEW API from official docs
-                response = self.client.models.generate_content(
-                    model=MODEL_NAME,
-                    contents=[prompt, img],
-                )
-                
-                print("✓ API call successful!")
-                break  # Success! Exit retry loop
-                
-            except Exception as e:
-                msg = str(e)
-                print(f"API Error: {msg[:200]}")  # Log error details
-                
-                # Check if it's a rate-limit / 429-type error
-                if "429" in msg or "rate limit" in msg.lower() or "quota" in msg.lower():
-                    if attempt == MAX_RETRIES:
-                        # Check if it's a quota issue vs rate limit
-                        if "quota" in msg.lower():
-                            raise Exception(
-                                f"⚠️ API Quota Exceeded: {msg}. "
-                                f"Your API key may have reached its daily/monthly limit."
-                            )
-                        else:
-                            raise Exception(
-                                "⚠️ API Rate Limit: Too many requests. "
-                                "Please wait 30-60 seconds before trying again."
-                            )
-                    
-                    print(f"Got 429 / rate limit on attempt {attempt}/{MAX_RETRIES}. "
-                          f"Sleeping {delay} seconds before retry...")
-                    time.sleep(delay)
-                    delay *= 2  # exponential backoff
-                else:
-                    # Some other error – don't keep retrying blindly
-                    raise
+        # ACTUAL API CALL - single call, no retry
+        response = self.client.models.generate_content(
+            model=MODEL_NAME,
+            contents=[prompt, img],
+        )
         
-        if not response:
-            raise Exception("Failed to get response after retries")
-        
+        print("✓ API call successful!")
         return response
     
     def _extract_token_usage(self, response) -> dict:

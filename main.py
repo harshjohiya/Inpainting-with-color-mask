@@ -44,15 +44,13 @@ async def read_root():
 @limiter.limit(RATE_LIMIT)
 async def inpaint_endpoint(
     request: Request,
-    image: UploadFile = File(...),
-    prompt: str = Form(...)
+    image: UploadFile = File(...)
 ):
     """
-    Image inpainting endpoint
+    Automatic image inpainting endpoint - removes all furniture and objects
     
     Args:
         image: uploaded image file
-        prompt: text instruction like "remove the fridge" or "remove the person on the left"
     
     Returns:
         JSON with image_base64, token_usage, and optionally error
@@ -60,8 +58,8 @@ async def inpaint_endpoint(
     # Read uploaded image bytes
     image_bytes = await image.read()
     
-    # Process image with Gemini service
-    result = gemini_service.inpaint_image(image_bytes, prompt)
+    # Process image with Gemini service (no prompt needed - automatic detection)
+    result = gemini_service.inpaint_image(image_bytes)
     
     return result
 

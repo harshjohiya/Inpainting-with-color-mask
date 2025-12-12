@@ -27,13 +27,12 @@ class GeminiService:
         """Check if API is properly configured"""
         return self.client is not None
     
-    def inpaint_image(self, image_bytes: bytes, prompt: str) -> dict:
+    def inpaint_image(self, image_bytes: bytes) -> dict:
         """
-        Perform image inpainting using Gemini AI
+        Perform automatic image inpainting - removes all furniture and objects
         
         Args:
             image_bytes: Raw image bytes
-            prompt: Just the item name to remove (e.g., "sofa", "chair", "curtain")
         
         Returns:
             dict with keys: image_base64, token_usage, and optionally error
@@ -48,12 +47,24 @@ class GeminiService:
             # Load image with PIL
             img = Image.open(io.BytesIO(image_bytes))
             
-            # Construct full prompt from item name
-            full_prompt = f"Remove {prompt} from this image and fill the space naturally to match the surrounding area."
-            print(f"Full prompt: {full_prompt}")
+            # Comprehensive automatic prompt - remove EVERYTHING except room structure
+            auto_prompt = (
+                "Remove EVERYTHING from this room to make it completely empty. "
+                "Remove ALL of these items: "
+                "- All furniture (sofa, bed, chair, table, desk, cabinet, almirah, wardrobe, dresser, shelf, bookcase) "
+                "- All electrical appliances (TV, LCD, refrigerator, AC, fan, lights, lamps) "
+                "- All decorative items (photo frames, paintings, mirrors, wall art, plants, vases, decorations) "
+                "- All electronics (computer, speakers, cables, devices) "
+                "- All textiles (curtains, drapes, rugs, carpets, cushions, bedding) "
+                "- Any other objects, items, or belongings. "
+                "Keep ONLY the bare room structure: plain walls, plain floor, plain ceiling, empty windows, and doors. "
+                "Fill all removed areas with matching wall color, floor texture, or appropriate background. "
+                "Make it look like a completely vacant, unfurnished room ready for new tenants."
+            )
+            print(f"Auto-detecting and removing ALL objects from room (furniture, appliances, decorations, etc.)...")
             
             # Call API directly - no retry, no delay
-            response = self._call_api(full_prompt, img)
+            response = self._call_api(auto_prompt, img)
             
             # Extract token usage
             token_info = self._extract_token_usage(response)

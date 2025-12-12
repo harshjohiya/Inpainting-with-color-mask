@@ -189,23 +189,14 @@
 
   <div class="container">
     <h1>Image Inpainting</h1>
-    <p>Upload an image and describe what you want to remove.</p>
+    <p>Upload a room image and get an empty room automatically - AI detects and removes all furniture & objects.</p>
 
   <div class="card">
     <form id="inpaint-form">
-      <label for="image">Image</label>
+      <label for="image">Upload Room Image</label>
       <input type="file" id="image" name="image" accept="image/*" required />
 
-      <label for="prompt">What do you want to remove?</label>
-      <input
-        type="text"
-        id="prompt"
-        name="prompt"
-        placeholder="e.g., sofa, chair, curtain, table"
-        required
-      />
-
-      <button type="submit" id="submit-btn">Inpaint</button>
+      <button type="submit" id="submit-btn">Empty This Room</button>
       <div class="status" id="status"></div>
       <div class="token-info" id="token-info" style="display:none;">
         <strong>📊 Token Usage</strong>
@@ -245,7 +236,6 @@
   <script>
     const form = document.getElementById("inpaint-form");
     const imageInput = document.getElementById("image");
-    const promptInput = document.getElementById("prompt");
     const statusEl = document.getElementById("status");
     const submitBtn = document.getElementById("submit-btn");
     const originalPreview = document.getElementById("original-preview");
@@ -273,23 +263,18 @@
       e.preventDefault();
 
       const file = imageInput.files[0];
-      const prompt = promptInput.value.trim();
 
       if (!file) {
         statusEl.textContent = "Please select an image.";
         return;
       }
-      if (!prompt) {
-        statusEl.textContent = "Please type what to remove.";
-        return;
-      }
 
       const formData = new FormData();
       formData.append("image", file);
-      formData.append("prompt", prompt);
 
       submitBtn.disabled = true;
-      statusEl.textContent = "Processing...";
+      submitBtn.textContent = "Processing...";
+      statusEl.textContent = "🤖 AI is detecting and removing all objects...";
 
       try {
         const res = await fetch("/api/inpaint", {
@@ -330,6 +315,7 @@
           document.getElementById("total-tokens").textContent = totalTokens;
           tokenInfo.style.display = "block";
           
+          submitBtn.textContent = "Empty This Room";
           submitBtn.disabled = false;
           return; // Exit early
         }
@@ -344,8 +330,10 @@
         resultBox.classList.remove("empty");
         resultBox.querySelector("span").style.display = "none";
         
-        statusEl.textContent = "Done!";
-        statusEl.style.color = "#666";
+        statusEl.textContent = "✅ Room emptied successfully!";
+        statusEl.style.color = "#2db89f";
+        submitBtn.textContent = "Empty This Room";
+        submitBtn.disabled = false;
         
         // Always display token usage box (for testing - show even with 0 tokens)
         const tokenInfo = document.getElementById("token-info");
@@ -366,6 +354,8 @@
       } catch (err) {
         console.error(err);
         statusEl.textContent = "Error: " + err.message;
+        statusEl.style.color = "#d32f2f";
+        submitBtn.textContent = "Empty This Room";
       } finally {
         submitBtn.disabled = false;
       }

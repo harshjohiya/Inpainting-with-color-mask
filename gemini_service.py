@@ -49,17 +49,27 @@ class GeminiService:
             
             # Comprehensive automatic prompt - remove EVERYTHING except room structure
             auto_prompt = (
-                "Remove EVERYTHING from this room to make it completely empty. "
-                "Remove ALL of these items: "
-                "- All furniture (sofa, bed, chair, table, desk, cabinet, almirah, wardrobe, dresser, shelf, bookcase) "
-                "- All electrical appliances (TV, LCD, refrigerator, AC, fan, lights, lamps) "
-                "- All decorative items (photo frames, paintings, mirrors, wall art, plants, vases, decorations) "
-                "- All electronics (computer, speakers, cables, devices) "
-                "- All textiles (curtains, drapes, rugs, carpets, cushions, bedding) "
-                "- Any other objects, items, or belongings. "
-                "Keep ONLY the bare room structure: plain walls, plain floor, plain ceiling, empty windows, and doors. "
-                "Fill all removed areas with matching wall color, floor texture, or appropriate background. "
-                "Make it look like a completely vacant, unfurnished room ready for new tenants."
+                "Remove EVERYTHING from this room to make it completely empty."
+                "Remove ALL of these items:"
+                "- All furniture (sofa, bed, chair, table, desk, cabinet, almirah, wardrobe, dresser, shelf, bookcase)"
+                "- All electrical appliances (TV, LCD, refrigerator, AC, fan, lights, lamps)"
+                "- All decorative items (photo frames, paintings, mirrors, wall art, plants, vases, decorations)"
+                "- All electronics (computer, speakers, cables, devices)"
+                "- All textiles (curtains, drapes, rugs, carpets, cushions, bedding) EXCEPT the window curtains. Keep all curtains exactly as they are."
+                "- Any other objects, items, or belongings."
+
+                "IMPORTANT:"
+                "Do NOT change or alter the room’s original structure, shape, dimensions, perspective, lighting, wall color, floor material, ceiling design, windows, or door frames."
+                "Do NOT redesign the room or generate new textures."
+                "Do NOT add anything new. Only remove items."
+
+                "Keep ONLY the bare room structure: plain walls, plain floor, plain ceiling, empty windows (with original curtains preserved), and doors."
+
+                "Fill all removed areas with matching wall color, floor texture, or appropriate background that blends naturally with the existing surfaces."
+
+                "Make it look like a completely vacant, unfurnished room ready for new tenants WITHOUT altering the room's originality."
+
+
             )
             print(f"Auto-detecting and removing ALL objects from room (furniture, appliances, decorations, etc.)...")
             

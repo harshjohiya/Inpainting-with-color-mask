@@ -47,18 +47,19 @@ async def inpaint_endpoint(
     image: UploadFile = File(...)
 ):
     """
-    Automatic image inpainting endpoint - removes all furniture and objects
+    Automatic image segmentation endpoint - generates color-coded masks for each object
     
     Args:
         image: uploaded image file
     
     Returns:
-        JSON with image_base64, token_usage, and optionally error
+        JSON with image_base64, color_mapping (RGB values for each object), 
+        token_usage, and optionally error
     """
     # Read uploaded image bytes
     image_bytes = await image.read()
     
-    # Process image with Gemini service (no prompt needed - automatic detection)
+    # Process image with Gemini service - generates segmentation mask with unique colors
     result = gemini_service.inpaint_image(image_bytes)
     
     return result

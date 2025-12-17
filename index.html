@@ -324,6 +324,62 @@
       font-weight: 600;
       color: #2db89f;
     }
+    .color-legend {
+      margin-top: 16px;
+      padding: 16px;
+      background: linear-gradient(135deg, #fff5e6 0%, #ffe4cc 100%);
+      border-radius: 10px;
+      border: 2px solid #ff9800;
+      box-shadow: 0 2px 8px rgba(255, 152, 0, 0.15);
+    }
+    .color-legend strong {
+      color: #e65100;
+      font-size: 1.05rem;
+      display: block;
+      margin-bottom: 12px;
+    }
+    #color-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .color-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      font-size: 0.9rem;
+    }
+    .color-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 4px;
+      border: 2px solid #333;
+      flex-shrink: 0;
+    }
+    .color-info {
+      flex: 1;
+    }
+    .color-info .object-id {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 2px;
+    }
+    .color-info .rgb-value {
+      font-family: 'Courier New', monospace;
+      color: #666;
+      font-size: 0.85rem;
+    }
+    .color-info .hex-value {
+      font-family: 'Courier New', monospace;
+      color: #999;
+      font-size: 0.8rem;
+    }
   </style>
 </head>
 <body>
@@ -358,16 +414,23 @@
   </div>
 
   <div class="container">
-    <h1>Image Inpainting</h1>
-    <p>Upload a room image and get an empty room automatically - AI detects and removes all furniture & objects.</p>
+    <h1>Object Segmentation Mask</h1>
+    <p>Upload a room image and AI will create color-coded masks for each object (furniture, decorations, appliances). Each object gets a unique color with RGB values.</p>
 
   <div class="card">
     <form id="inpaint-form">
       <label for="image">Upload Room Image</label>
       <input type="file" id="image" name="image" accept="image/*" required />
 
-      <button type="submit" id="submit-btn">Empty This Room</button>
+      <button type="submit" id="submit-btn">Generate Mask</button>
       <div class="status" id="status"></div>
+      
+      <!-- Color Legend Section -->
+      <div class="color-legend" id="color-legend" style="display:none;">
+        <strong>🎨 Object Colors & RGB Values</strong>
+        <div id="color-list"></div>
+      </div>
+      
       <div class="token-info" id="token-info" style="display:none;">
         <strong>📊 Token Usage</strong>
         <div class="token-row">
@@ -394,9 +457,9 @@
         </div>
       </div>
       <div class="col">
-        <h3>Result</h3>
+        <h3>Segmentation Mask</h3>
         <div class="image-preview-box empty" id="result-box">
-          <span>Processing result will appear here</span>
+          <span>Color-coded mask will appear here</span>
           <img id="result-image" alt="Result image" style="display:none;" />
         </div>
       </div>
@@ -451,10 +514,43 @@
       };
       
       history.unshift(item); // Add to beginning
-      if (history.length > 50) history = history.slice(0, 50); // Keep last 50
       
-      localStorage.setItem("inpaintHistory", JSON.stringify(history));
-      renderHistory();
+      // Try to save with decreasing history limits if quota exceeded
+      let maxHistorySize = 10; // Reduced from 50 to 10 to avoid quota issues
+      let saved = false;
+      
+      while (!saved && maxHistorySize > 0) {
+        try {
+          // Keep only the most recent items
+          const limitedHistory = history.slice(0, maxHistorySize);
+          localStorage.setItem("inpaintHistory", JSON.stringify(limitedHistory));
+          history = limitedHistory;
+          saved = true;
+          renderHistory();
+        } catch (e) {
+          if (e.name === 'QuotaExceededError') {
+            console.warn(`Storage quota exceeded with ${maxHistorySize} items. Reducing to ${maxHistorySize - 2}...`);
+            maxHistorySize -= 2; // Reduce by 2 and try again
+            history = history.slice(0, maxHistorySize);
+          } else {
+            console.error('Error saving to history:', e);
+            break;
+          }
+        }
+      }
+      
+      if (!saved) {
+        console.warn('Could not save to history due to storage limitations. Clearing old history...');
+        // If all else fails, clear history and save just the current item
+        history = [item];
+        try {
+          localStorage.setItem("inpaintHistory", JSON.stringify(history));
+          renderHistory();
+        } catch (e) {
+          console.error('Failed to save even single item:', e);
+          // Continue without saving to history
+        }
+      }
     }
     
     // Render history list
@@ -547,7 +643,7 @@
 
       submitBtn.disabled = true;
       submitBtn.textContent = "Processing...";
-      statusEl.textContent = "🤖 AI is detecting and removing all objects...";
+      statusEl.textContent = "🤖 AI is generating segmentation mask...";
 
       try {
         const res = await fetch("/api/inpaint", {
@@ -588,7 +684,7 @@
           document.getElementById("total-tokens").textContent = totalTokens;
           tokenInfo.style.display = "block";
           
-          submitBtn.textContent = "Empty This Room";
+          submitBtn.textContent = "Generate Mask";
           submitBtn.disabled = false;
           return; // Exit early
         }
@@ -604,9 +700,15 @@
         resultBox.classList.remove("empty");
         resultBox.querySelector("span").style.display = "none";
         
-        statusEl.textContent = "✅ Room emptied successfully!";
+        // Display color mapping if available
+        if (data.color_mapping && data.color_mapping.length > 0) {
+          displayColorLegend(data.color_mapping);
+          statusEl.textContent = `✅ Segmentation complete! Found ${data.color_mapping.length} objects.`;
+        } else {
+          statusEl.textContent = "✅ Mask generated successfully!";
+        }
         statusEl.style.color = "#2db89f";
-        submitBtn.textContent = "Empty This Room";
+        submitBtn.textContent = "Generate Mask";
         submitBtn.disabled = false;
         
         // Save to history
@@ -632,11 +734,40 @@
         console.error(err);
         statusEl.textContent = "Error: " + err.message;
         statusEl.style.color = "#d32f2f";
-        submitBtn.textContent = "Empty This Room";
+        submitBtn.textContent = "Generate Mask";
       } finally {
         submitBtn.disabled = false;
       }
     });
+    
+    // Function to display color legend
+    function displayColorLegend(colorMapping) {
+      const colorLegend = document.getElementById("color-legend");
+      const colorList = document.getElementById("color-list");
+      
+      if (!colorMapping || colorMapping.length === 0) {
+        colorLegend.style.display = "none";
+        return;
+      }
+      
+      // Generate color items HTML
+      const colorItemsHtml = colorMapping.map(item => {
+        const bgColor = item.hex || `rgb(${item.rgb.r}, ${item.rgb.g}, ${item.rgb.b})`;
+        return `
+          <div class="color-item">
+            <div class="color-box" style="background-color: ${bgColor};"></div>
+            <div class="color-info">
+              <div class="object-id">Object ${item.object_id}</div>
+              <div class="rgb-value">RGB: ${item.rgb.r}, ${item.rgb.g}, ${item.rgb.b}</div>
+              <div class="hex-value">${item.hex}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      colorList.innerHTML = colorItemsHtml;
+      colorLegend.style.display = "block";
+    }
   </script>
   </div>
 </body>
